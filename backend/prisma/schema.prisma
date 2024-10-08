@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tool {
+  id         Int               @id @default(autoincrement())
+  type       String            @unique
+  assistants AssistantToTool[]
+}
+
+model Assistant {
+  id           String            @id
+  name         String            @unique
+  instructions String
+  model        String
+  tools        AssistantToTool[]
+}
+
+model AssistantToTool {
+  assistant   Assistant @relation(fields: [assistantId], references: [id])
+  assistantId String
+  tool        Tool      @relation(fields: [toolId], references: [id])
+  toolId      Int
+
+  @@id([assistantId, toolId])
+  @@index([assistantId])
+  @@index([toolId])
+}
+
+model AccountHolder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  report    Report?  @relation(fields: [reportId], references: [id])
+  reportId  Int?     @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+enum ReportState {
+  CREATED
+  IN_PROGRESS
+  COMPLETE
+  ERRORED
+}
+
+model Report {
+  id            Int            @id @default(autoincrement())
+  accountHolder AccountHolder?
+  state         ReportState    @default(CREATED)
+  assessment    Assessment?
+  statement     Statement?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([id])
+  @@index([state])
+}
+
+model Statement {
+  id             Int      @id @default(autoincrement())
+  bankName       String
+  period         String
+  totalCredits   String
+  totalDebits    String
+  openingBalance String
+  closingBalance String
+  report         Report?  @relation(fields: [reportId], references: [id])
+  reportId       Int?     @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RecurringPayment {
+  id           Int         @id @default(autoincrement())
+  description  String
+  amount       String
+  category     String
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+  assessmentId Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Loan {
+  id            Int         @id @default(autoincrement())
+  servicer      String
+  description   String
+  monthlyAmount String
+  assessment    Assessment? @relation(fields: [assessmentId], references: [id])
+  assessmentId  Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Assessment {
+  id                   Int                   @id @default(autoincrement())
+  riskScore            String
+  riskAssessment       String
+  riskFactors          RiskFactor[]
+  highRiskTransactions HighRiskTransaction[]
+  summary              String
+  recommendForApproval Boolean
+  existingLoans        Loan[]
+  recurringPayments    RecurringPayment[]
+  report               Report?               @relation(fields: [reportId], references: [id])
+  reportId             Int?                  @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([id])
+}
+
+model RiskFactor {
+  id           Int         @id @default(autoincrement())
+  title        String
+  description  String
+  implication  String
+  Assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+  assessmentId Int?
+}
+
+model HighRiskTransaction {
+  id            Int         @id @default(autoincrement())
+  amount        String
+  description   String
+  justification String
+  assessment    Assessment? @relation(fields: [assessmentId], references: [id])
+  assessmentId  Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
